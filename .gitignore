@@ -1,0 +1,57 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Data — creditcard.csv and derived splits are large; keep them out of git
+data/raw/
+data/processed/
+*.csv
+*.parquet
+
+# Trained artifacts — regenerate with `python src/train.py`
+models/
+*.pkl
+*.joblib
+
+# Evaluation output — regenerate with `python src/evaluate.py`
+experiments/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+logs/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
