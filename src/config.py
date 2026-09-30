@@ -43,7 +43,10 @@ TARGET_COLUMN = "Class"
 
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
-FRAUD_THRESHOLD = 0.5
+# Tuned for F1 on a validation slice of the training fold by
+# train.select_threshold() -- never on the test fold, which would make the
+# reported precision/recall optimistic. Lower it to trade precision for recall.
+FRAUD_THRESHOLD = 0.455
 
 KAFKA_BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 KAFKA_TRANSACTIONS_TOPIC = os.environ.get("KAFKA_TRANSACTIONS_TOPIC", "transactions")

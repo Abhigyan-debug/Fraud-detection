@@ -16,6 +16,7 @@ from sklearn.metrics import (
 from config import (
     EXPERIMENTS_DIR,
     FEATURE_COLUMNS,
+    FRAUD_THRESHOLD,
     MODEL_PATH,
     PROCESSED_DIR,
     TARGET_COLUMN,
@@ -40,9 +41,12 @@ def evaluate(model_path=MODEL_PATH, save_plots: bool = True):
     model = joblib.load(model_path)
     X_test, y_test = load_test_set()
 
-    y_pred = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
+    # Threshold explicitly rather than calling model.predict(), which is hard-wired
+    # to 0.5 and would report numbers the API and consumer never actually produce.
+    y_pred = (y_proba >= FRAUD_THRESHOLD).astype(int)
 
+    print(f"Decision threshold: {FRAUD_THRESHOLD}")
     print("Classification report:")
     print(classification_report(y_test, y_pred, target_names=["Legit", "Fraud"]))
     print(f"ROC-AUC: {roc_auc_score(y_test, y_proba):.4f}")

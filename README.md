@@ -8,21 +8,26 @@ producer/consumer pair for scoring a simulated live transaction stream.
 ## Results
 
 Measured on the held-out test set: **56,746 transactions, 95 of them fraudulent**.
-The split is stratified and SMOTE is applied to the *training* fold only, so these
-numbers reflect the dataset's natural 0.167% fraud rate rather than a rebalanced one.
+The split is stratified, the scaler is fitted on the training fold only, and the
+decision threshold is tuned on a validation slice carved out of that same training
+fold -- the test set is used exactly once, for the numbers below.
 
 | Metric (fraud class) | Score |
 | --- | --- |
-| Precision | **0.909** |
-| Recall | **0.737** |
-| F1 | **0.814** |
-| ROC-AUC | **0.962** |
-| PR-AUC | **0.817** |
+| Precision | **0.972** |
+| Recall | **0.726** |
+| F1 | **0.831** |
+| ROC-AUC | **0.950** |
+| PR-AUC | **0.816** |
 
-70 of 95 frauds caught, at the cost of 7 false positives out of 56,651 legitimate
-transactions. Overall accuracy is 0.9994, but that number means little here --
-labelling every transaction "legit" already scores 0.998 -- so precision/recall and
-PR-AUC are what to read.
+69 of 95 frauds caught, at the cost of just 2 false positives out of 56,651
+legitimate transactions. Overall accuracy is 0.9995, but that number means little
+here -- labelling every transaction "legit" already scores 0.998 -- so precision,
+recall and PR-AUC are what to read.
+
+Recall rests on 95 positive cases, so its 95% confidence interval is roughly
+**0.63-0.81**. Treat it as "about three quarters of frauds caught", not as a
+number precise to the decimal.
 
 ![Confusion matrix](experiments/confusion_matrix.png)
 
@@ -32,8 +37,24 @@ PR-AUC are what to read.
 
 The precision-recall curve is the informative one at this class imbalance; the ROC
 curve looks near-perfect largely because true negatives dominate. The decision
-threshold is `FRAUD_THRESHOLD` in `src/config.py` (default 0.5) -- lowering it trades
-precision for recall.
+threshold lives in `FRAUD_THRESHOLD` (`src/config.py`) and is shared by the API,
+the Kafka consumer, the dashboard and `evaluate.py`, so they can never disagree
+about what counts as fraud. Lowering it trades precision for recall.
+
+### Handling the class imbalance
+
+Frauds are 0.167% of the data, so the training fold is weighted rather than
+resampled: `class_weight="balanced_subsample"` on the forest, no SMOTE. SMOTE was
+benchmarked against it and is not used because it did not earn its cost:
+
+| Approach | PR-AUC | ROC-AUC | Train rows | Fit time |
+| --- | --- | --- | --- | --- |
+| Class weights only (used) | 0.816 | 0.950 | 226,980 | **89 s** |
+| SMOTE only | 0.817 | 0.967 | 453,204 | 367 s |
+| SMOTE + class weights | 0.819 | 0.972 | 453,204 | 237 s |
+
+The PR-AUC spread is 0.003, which is noise at 95 positive cases, so the simpler
+and ~3x faster option wins. It also produces a 6.5 MB model instead of a 35 MB one.
 
 Regenerate these plots and numbers with `python evaluate.py` from `src/`.
 
@@ -47,7 +68,7 @@ experiments/                  # evaluation plots (created by evaluate.py)
 notebooks/EDA.ipynb           # exploratory data analysis
 src/
   config.py                   # paths, feature list, Kafka settings
-  preprocessing.py             # load -> scale -> split -> SMOTE balance
+  preprocessing.py             # load -> split -> scale (train-fitted) -> optional SMOTE
   train.py                     # trains and saves the model + scaler
   evaluate.py                  # metrics + plots on the held-out test set
   api.py                       # FastAPI scoring service

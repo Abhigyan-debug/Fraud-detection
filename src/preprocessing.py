@@ -31,7 +31,11 @@ def load_raw_data(path=RAW_DATA_PATH) -> pd.DataFrame:
 
 
 def scale_features(df: pd.DataFrame, scaler: StandardScaler = None, fit: bool = True):
-    """Scale Time/Amount in place; the V1-V28 columns are already PCA output."""
+    """Scale Time/Amount; the V1-V28 columns are already PCA output.
+
+    Pass ``fit=False`` with an existing ``scaler`` for any data that must not
+    influence the fitted statistics (i.e. the test fold and live inference).
+    """
     df = df.copy()
     if scaler is None:
         scaler = StandardScaler()
@@ -58,16 +62,24 @@ def balance_classes(X_train: pd.DataFrame, y_train: pd.Series):
     return smote.fit_resample(X_train, y_train)
 
 
-def prepare_dataset(path=RAW_DATA_PATH, save_artifacts: bool = True):
-    """Run the full pipeline: load -> scale -> split -> balance.
+def prepare_dataset(path=RAW_DATA_PATH, save_artifacts: bool = True, balance: bool = True):
+    """Run the full pipeline: load -> split -> scale -> balance.
 
-    Returns (X_train_resampled, X_test, y_train_resampled, y_test, scaler).
+    The split happens before scaling on purpose: fitting the scaler on the full
+    frame would let the test fold's Time/Amount statistics inform the training
+    data. SMOTE likewise only ever sees the training fold.
+
+    Returns (X_train, X_test, y_train, y_test, scaler).
     """
     df = load_raw_data(path)
-    df, scaler = scale_features(df, fit=True)
 
     X_train, X_test, y_train, y_test = split_data(df)
-    X_train_res, y_train_res = balance_classes(X_train, y_train)
+
+    X_train, scaler = scale_features(X_train, fit=True)
+    X_test, _ = scale_features(X_test, scaler=scaler, fit=False)
+
+    if balance:
+        X_train, y_train = balance_classes(X_train, y_train)
 
     if save_artifacts:
         SCALER_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -78,13 +90,13 @@ def prepare_dataset(path=RAW_DATA_PATH, save_artifacts: bool = True):
             PROCESSED_DIR / "test.csv", index=False
         )
 
-    return X_train_res, X_test, y_train_res, y_test, scaler
+    return X_train, X_test, y_train, y_test, scaler
 
 
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test, _ = prepare_dataset()
 
-    print(f"Training set (after SMOTE): {X_train.shape}")
+    print(f"Training set (after balancing): {X_train.shape}")
     print(y_train.value_counts())
     print(f"\nTest set: {X_test.shape}")
     print(y_test.value_counts())
