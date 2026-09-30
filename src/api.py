@@ -41,7 +41,13 @@ async def lifespan(app: FastAPI):
             f"Model or scaler not found ({MODEL_PATH}, {SCALER_PATH}). "
             "Run `python train.py` first."
         )
-    _state["model"] = joblib.load(MODEL_PATH)
+    model = joblib.load(MODEL_PATH)
+    # Score on a single thread. The forest is trained with n_jobs=-1, but at a
+    # batch size of one the thread-pool setup costs several times more than the
+    # tree traversal itself. Measured through this endpoint: 62 ms p50 with
+    # n_jobs=-1 against 15 ms with n_jobs=1, for bit-identical predictions.
+    model.n_jobs = 1
+    _state["model"] = model
     _state["scaler"] = joblib.load(SCALER_PATH)
     yield
     _state.clear()

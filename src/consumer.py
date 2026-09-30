@@ -31,6 +31,9 @@ def run():
         raise FileNotFoundError("Model or scaler not found. Run `python train.py` first.")
 
     model = joblib.load(MODEL_PATH)
+    # One message at a time, so the forest's thread pool is pure overhead here
+    # (see the note in api.py).
+    model.n_jobs = 1
     scaler = joblib.load(SCALER_PATH)
 
     consumer = KafkaConsumer(
