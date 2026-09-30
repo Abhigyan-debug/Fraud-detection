@@ -35,8 +35,8 @@ models/
 *.pkl
 *.joblib
 
-# Evaluation output — regenerate with `python src/evaluate.py`
-experiments/
+# Evaluation plots are committed on purpose (small, shown in the README);
+# regenerate them with `python src/evaluate.py`
 
 # Notebooks
 .ipynb_checkpoints/

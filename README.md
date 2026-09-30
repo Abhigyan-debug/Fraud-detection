@@ -5,6 +5,38 @@ Detection" dataset (`Time`, `V1`-`V28`, `Amount`, `Class`): preprocessing,
 model training/evaluation, a REST API, a Streamlit dashboard, and a Kafka
 producer/consumer pair for scoring a simulated live transaction stream.
 
+## Results
+
+Measured on the held-out test set: **56,746 transactions, 95 of them fraudulent**.
+The split is stratified and SMOTE is applied to the *training* fold only, so these
+numbers reflect the dataset's natural 0.167% fraud rate rather than a rebalanced one.
+
+| Metric (fraud class) | Score |
+| --- | --- |
+| Precision | **0.909** |
+| Recall | **0.737** |
+| F1 | **0.814** |
+| ROC-AUC | **0.962** |
+| PR-AUC | **0.817** |
+
+70 of 95 frauds caught, at the cost of 7 false positives out of 56,651 legitimate
+transactions. Overall accuracy is 0.9994, but that number means little here --
+labelling every transaction "legit" already scores 0.998 -- so precision/recall and
+PR-AUC are what to read.
+
+![Confusion matrix](experiments/confusion_matrix.png)
+
+| Precision-Recall | ROC |
+| --- | --- |
+| ![Precision-recall curve](experiments/precision_recall_curve.png) | ![ROC curve](experiments/roc_curve.png) |
+
+The precision-recall curve is the informative one at this class imbalance; the ROC
+curve looks near-perfect largely because true negatives dominate. The decision
+threshold is `FRAUD_THRESHOLD` in `src/config.py` (default 0.5) -- lowering it trades
+precision for recall.
+
+Regenerate these plots and numbers with `python evaluate.py` from `src/`.
+
 ## Project layout
 
 ```
